@@ -1,3 +1,4 @@
+import base64
 import glob
 import json
 import os
@@ -39,11 +40,10 @@ def read_extension_to_language_mappings():
     return mappings
 
 
-def dataset_iter(files):
+def dataset_iter(project_dir, files):
     def gen():
         mappings = read_extension_to_language_mappings()
         for x in files:
-            print("Processing", x)
             _, extname = os.path.splitext(x)
 
             with open(x) as f:
@@ -53,7 +53,13 @@ def dataset_iter(files):
                     print("Cannot decode unicode", x)
                     continue
 
+            segments = x.removeprefix(project_dir).split(os.sep)
+            project = segments[1]
+            file = os.path.join(*segments[2:])
             yield dict(
+                id=to_id(project, file),
+                project=project,
+                file=file,
                 language=mappings[extname],
                 content=content,
                 **metrics.compute(content),
@@ -71,6 +77,25 @@ def count_by_language(dataset):
         .to_frame("count")
     )
     return df
+
+
+def to_id(*args):
+    token = ":".join(args)
+    return base64.urlsafe_b64encode(token.encode("utf-8")).decode("utf-8").rstrip("=")
+
+
+def basic_filters(line_max=100, line_mean=100, alpha_frac=0.25):
+    def fn(example):
+        """Filter files based on line length and % alphanumeric characters"""
+        if example["max_line_length"] > line_max:
+            return False
+        elif example["avg_line_length"] > line_mean:
+            return False
+        elif example["alphanum_fraction"] < alpha_frac:
+            return False
+        return True
+
+    return fn
 
 
 if __name__ == "__main__":
@@ -91,8 +116,10 @@ if __name__ == "__main__":
         filter(is_valid_file, glob.glob(args.project_dir + "/**/*", recursive=True))
     )
 
-    ds = Dataset.from_generator(dataset_iter(files))
+    ds = Dataset.from_generator(dataset_iter(os.path.abspath(args.project_dir), files))
+    ds = ds.filter(basic_filters())
     ds.save_to_disk(args.output_dir)
+    ds.to_json(os.path.join(args.output_dir, "dumps.json"))
 
     print("\n## Summary")
     print("Number of source files", len(ds))

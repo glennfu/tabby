@@ -8,7 +8,6 @@ services:
       dockerfile: ./development/Dockerfile
       args:
         PYPI_INDEX_URL: https://mirrors.aliyun.com/pypi/simple
-        PYTHON_BUILD_MIRROR_URL: https://repo.huaweicloud.com/python
     environment:
       UVICORN_RELOAD: true
       VECTOR_WATCH_CONFIG: true
@@ -17,3 +16,6 @@ services:
       STREAMLIT_HIDE_MENU: false
     volumes:
       - ../tabby:/home/app/tabby
+    ports:
+      - 8083:8083
+      - 8084:8084
