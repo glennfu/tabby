@@ -12,8 +12,9 @@ class Choice(BaseModel):
 # https://code.visualstudio.com/docs/languages/identifiers
 class Language(str, Enum):
     UNKNOWN = "unknown"
-    PYTHON = "python"
     JAVASCRIPT = "javascript"
+    PYTHON = "python"
+    RUBY = "ruby"
     TYPESCRIPT = "typescript"
 
 
